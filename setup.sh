@@ -5,15 +5,20 @@ set -e
 
 echo "=== ThunderKittens Setup Script ==="
 
-# System packages
+# ----------------------------------------------------------------------
+# 1. System packages
+# ----------------------------------------------------------------------
 echo "Installing system packages..."
 sudo apt update
-sudo apt install gcc-11 g++-11 clang-17 npm
+sudo apt install -y gcc-11 g++-11 clang-17 npm
 
-# Set up gcc-11 as default
-sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 100 --slave /usr/bin/g++ g++ /usr/bin/g++-11
+# Make gcc-11 the default (also sets g++)
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 100 \
+                          --slave /usr/bin/g++ g++ /usr/bin/g++-11
 
-# Set up npm global directory
+# ----------------------------------------------------------------------
+# 2. npm global directory
+# ----------------------------------------------------------------------
 echo "Setting up npm..."
 mkdir -p ~/.npm-global
 npm config set prefix ~/.npm-global
@@ -21,41 +26,57 @@ echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc
 export PATH="$HOME/.npm-global/bin:$PATH"
 npm install -g @anthropic-ai/claude-code
 
-# Create conda environment
+# ----------------------------------------------------------------------
+# 3. Conda environment
+# ----------------------------------------------------------------------
 echo "Setting up conda environment..."
 conda create -n kittens python=3.11 -y
+
 echo "Activating conda environment..."
 eval "$(conda shell.bash hook)"
 conda activate kittens
 
-# Install CUDA and PyTorch with proper CUDA support
-echo "Installing CUDA and PyTorch..."
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# ----------------------------------------------------------------------
+# 4. CUDA-enabled PyTorch & build tools
+# ----------------------------------------------------------------------
+echo "Installing CUDA-enabled PyTorch and build tools..."
+pip install torch torchvision torchaudio \
+            --index-url https://download.pytorch.org/whl/cu121
 pip install pybind11 ninja
 
-# Set up CUDA environment (must be done before building)
-echo "Setting up CUDA environment..."
+# ----------------------------------------------------------------------
+# 5. CUDA environment variables
+# ----------------------------------------------------------------------
+echo "Configuring CUDA environment..."
 export CUDA_HOME=/usr/local/cuda
-export PATH=${CUDA_HOME}/bin:${PATH}
-echo "export CUDA_HOME=/usr/local/cuda" >> ~/.bashrc
-echo "export PATH=\"\${CUDA_HOME}/bin:\${PATH}\"" >> ~/.bashrc
+export PATH="${CUDA_HOME}/bin:${PATH}"
+echo 'export CUDA_HOME=/usr/local/cuda' >> ~/.bashrc
+echo 'export PATH="${CUDA_HOME}/bin:${PATH}"' >> ~/.bashrc
 
-# Set up library path for PyTorch CUDA libraries
+# Add PyTorch’s CUDA libs to LD_LIBRARY_PATH
 echo "Setting up library paths..."
-TORCH_LIB_PATH=$(python -c "import torch; import os; print(os.path.join(os.path.dirname(torch.__file__), 'lib'))")
-echo "export LD_LIBRARY_PATH=\"$TORCH_LIB_PATH:\${CUDA_HOME}/lib64:\$LD_LIBRARY_PATH\"" >> ~/.bashrc
-export LD_LIBRARY_PATH="$TORCH_LIB_PATH:${CUDA_HOME}/lib64:$LD_LIBRARY_PATH"
+TORCH_LIB_PATH=$(python - <<'PY'
+import os, torch
+print(os.path.join(os.path.dirname(torch.__file__), "lib"))
+PY
+)
+export LD_LIBRARY_PATH="${TORCH_LIB_PATH}:${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
+echo "export LD_LIBRARY_PATH=\"${TORCH_LIB_PATH}:${CUDA_HOME}/lib64:\$LD_LIBRARY_PATH\"" >> ~/.bashrc
 
-# Install ThunderKittens
-echo "Installing ThunderKittens..."
+# ----------------------------------------------------------------------
+# 6. ThunderKittens source build
+# ----------------------------------------------------------------------
+echo "Installing ThunderKittens from source..."
 export CC=/usr/bin/gcc-11
 export CXX=/usr/bin/g++-11
 pip install -e .
 
-# Test the installation
+# ----------------------------------------------------------------------
+# 7. Quick import test
+# ----------------------------------------------------------------------
 echo "Testing installation..."
 python -c "import thunderkittens as tk; print('✓ ThunderKittens imported successfully!')"
 
 echo "=== Setup Complete! ==="
-echo "Please run 'source ~/.bashrc' or restart your shell to ensure all environment variables are loaded."
-echo "Then activate the environment with: conda activate kittens"
+echo "Run  'source ~/.bashrc'  (or restart your shell) to pick up new variables, "
+echo "then activate the environment with:  conda activate kittens"
