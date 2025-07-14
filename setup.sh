@@ -64,7 +64,14 @@ export LD_LIBRARY_PATH="${TORCH_LIB_PATH}:${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
 echo "export LD_LIBRARY_PATH=\"${TORCH_LIB_PATH}:${CUDA_HOME}/lib64:\$LD_LIBRARY_PATH\"" >> ~/.bashrc
 
 # ----------------------------------------------------------------------
-# 6. ThunderKittens source build
+# 6. ThunderKittens environment
+# ----------------------------------------------------------------------
+echo "Setting up ThunderKittens environment..."
+export THUNDERKITTENS_ROOT=$(pwd)
+echo "export THUNDERKITTENS_ROOT=$(pwd)" >> ~/.bashrc
+
+# ----------------------------------------------------------------------
+# 7. ThunderKittens source build
 # ----------------------------------------------------------------------
 echo "Installing ThunderKittens from source..."
 export CC=/usr/bin/gcc-11
@@ -72,7 +79,7 @@ export CXX=/usr/bin/g++-11
 pip install -e .
 
 # ----------------------------------------------------------------------
-# 7. Quick import test
+# 8. Quick import test
 # ----------------------------------------------------------------------
 echo "Testing installation..."
 python -c "import thunderkittens as tk; print('✓ ThunderKittens imported successfully!')"
